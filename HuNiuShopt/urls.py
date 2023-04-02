@@ -16,9 +16,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from user import views as user_view
+from dtoken import views as token_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # 注册功能
+    # 注册路由
     path('v1/users', user_view.user),
+    # 登录路由
+    path('v1/tokens', token_view.tokens),
 ]
