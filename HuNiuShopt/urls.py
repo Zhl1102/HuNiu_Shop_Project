@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from user import views as user_view
 from dtoken import views as token_view
 
@@ -24,4 +24,6 @@ urlpatterns = [
     path('v1/users', user_view.user),
     # 登录路由
     path('v1/tokens', token_view.tokens),
+    # 激活路由
+    path('v1/users/', include("user.urls"))
 ]
