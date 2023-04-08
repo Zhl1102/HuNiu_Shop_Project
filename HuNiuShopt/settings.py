@@ -188,3 +188,10 @@ SMS_CONFIG = {
     "app_id": "2c94811c870df4c801875bd0d26b0c5d",
     "template_id": "1",
 }
+
+# weibo授权码登录
+WEIBO_CONFIG = {
+    "app_key": "3329558176",
+    "app_secret": "f0af13e26b8d2a27f91ce251a2ee1df6",
+    "redirect_uri": "http://localhost:9999/huniushop/templates/callback.html",
+}
