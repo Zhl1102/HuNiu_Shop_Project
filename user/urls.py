@@ -12,4 +12,7 @@ urlpatterns = [
     path('<str:username>/address/default', views.DefaultAddressView.as_view()),
     # 注册短信验证
     path('sms/code', views.sms_view),
+    # 微博登录
+    path('weibo/authorization', views.OauthUrlView.as_view()),
+    path('weibo/users', views.OauthView.as_view()),
 ]

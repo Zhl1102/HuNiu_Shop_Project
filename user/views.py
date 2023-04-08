@@ -4,9 +4,10 @@ import json
 import random
 import time
 import jwt
+import requests
 from django.http import JsonResponse
 from django.conf import settings
-from .models import UserProfile, Address
+from .models import *
 from django.core.cache import caches
 from django.core.mail import send_mail
 from django.db import transaction
@@ -14,7 +15,7 @@ from .tasks import *
 from django.views import View
 from utils.logging_dec import logging_check
 from utils.base_view import BaseView
-from utils.sms import YunTongXunAPI
+from utils.weibo_api import OauthAPI
 
 CODE_CACHE = caches["default"]
 SMS_CACHE = caches["sms"]
@@ -58,16 +59,7 @@ def user(request):
     # 激活功能
     # 为每个用户拼接一个随机数，进行base64加密
     try:
-        code_num = "%d" % random.randint(1000, 9999)
-        code = "%s_%s" % (code_num, username)
-        code = base64.urlsafe_b64encode(code.encode()).decode()
-
-        # 存储随机数
-        key = "active_email_%s" % username
-        CODE_CACHE.set(key, code_num, 86400*3)
-
-        # 用户激活链接
-        verify_url = "http://127.0.0.1:9999/huniushop/templates/active.html?code=" + code
+        verify_url = get_verify_url(username)
 
         # 异步发送激活邮件
         async_send_active_mail.delay(verify_url, email)
@@ -104,6 +96,8 @@ def active_view(request):
     # 与redis缓存中的code做比较
     key = "active_email_%s" % username
     redis_num = CODE_CACHE.get(key)
+    print(redis_num)
+    print(code_num)
     if redis_num != code_num:
         return JsonResponse({"code": 10103, "error": "激活链接有误"})
 
@@ -304,6 +298,98 @@ def sms_view(request):
 
     return JsonResponse({"code": 200, "data": "发送成功"})
 
+class OauthUrlView(View):
+    def get(self, request):
+        """
+        授权登录视图逻辑，获取微博登录code
+        """
+        weibo_api = OauthAPI(**settings.WEIBO_CONFIG)
+        oauth_url = weibo_api.get_grant_url()
+
+        # 获取到重定向的url，返回给前端
+        return JsonResponse({"code": 200, "oauth_url": oauth_url})
+
+class OauthView(View):
+    def get(self, request):
+        """
+        获取access_token逻辑
+        """
+        code = request.GET.get("code")
+        if not code:
+            return JsonResponse({"code": 10111, "error": "没有授权码"})
+
+        post_url = "https://api.weibo.com/oauth2/access_token"
+        post_data = {
+            "client_id": settings.WEIBO_CONFIG.get("app_key"),
+            "client_secret": settings.WEIBO_CONFIG.get("app_secret"),
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.WEIBO_CONFIG.get("redirect_uri"),
+        }
+
+        access_html = requests.post(url=post_url, data=post_data).json()
+
+        # 绑定注册流程
+        wuid = access_html.get("uid")
+        access_token = access_html.get("access_token")
+
+        try:
+            weibo_user = WeiBoProfile.objects.get(wuid=wuid)
+        except Exception as e:
+            print("获取微博用户失败：", e)
+            # 第一次扫码登录，添加数据
+            WeiBoProfile.objects.create(wuid=wuid, access_token=access_token)
+            return JsonResponse({"code": 201, "uid": wuid})
+
+        user = weibo_user.user_profile
+        if user:
+            return JsonResponse({"code": 200, "username": user.username, "token": make_token(user.username)})
+
+        return JsonResponse({"code": 201, "uid": wuid})
+
+        # return JsonResponse({"code": 200})
+
+    def post(self, request):
+        """
+        绑定注册视图逻辑
+        """
+        data = json.loads(request.body)
+        username = data.get("username")
+        password = data.get("password")
+        email = data.get("email")
+        phone = data.get("phone")
+        wuid = data.get("uid")
+
+        pwd_md5 = md5_token(password)
+
+        try:
+            user = UserProfile.objects.get(username=username)
+            return JsonResponse({"code": 10112, "error": "用户名已存在"})
+        except Exception as e:
+            with transaction.atomic():
+                sid = transaction.savepoint()
+                try:
+                    # 添加用户
+                    user = UserProfile.objects.create(username=username, password=pwd_md5, email=email, phone=phone)
+                    # 更新外键
+                    weibo_user = WeiBoProfile.objects.get(wuid=wuid)
+                    weibo_user.user_profile = user
+                    user.save()
+                    weibo_user.save()
+                except Exception as e:
+                    print("用户添加/更新失败：", e)
+                    transaction.savepoint_rollback(sid)
+                    return JsonResponse({"code": 10113, "error": "绑定注册失败"})
+                transaction.savepoint_commit(sid)
+
+            # 注册成功发送激活邮件
+            verify_url = get_verify_url(username)
+            async_send_active_mail(verify_url, email)
+
+            token = make_token(username)
+
+            return JsonResponse({"code": 200, "username": username, "token": token})
+
 def md5_token(string):
     """
     密码加密
@@ -323,6 +409,21 @@ def make_token(username, expire=86400):
     }
     key = settings.JWT_TOKEN_KEY
     return jwt.encode(payload, key, algorithm="HS256")
+
+def get_verify_url(username):
+    # 发送激活邮件
+    code_num = "%d" % random.randint(1000, 9999)
+    code = "%s_%s" % (code_num, username)
+    code = base64.urlsafe_b64encode(code.encode()).decode()
+
+    # 存储随机数
+    key = "active_email_%s" % username
+    CODE_CACHE.set(key, code_num, 86400 * 3)
+
+    # 用户激活链接
+    verify_url = "http://127.0.0.1:9999/huniushop/templates/active.html?code=" + code
+
+    return verify_url
 
 # def send_active_mail(verify_url, email):
 #     subject = "虎妞商城激活邮件"

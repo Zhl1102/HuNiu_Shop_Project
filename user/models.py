@@ -31,3 +31,12 @@ class Address(BaseModel):
     # 修改表名
     class Meta:
         db_table = "user_address"
+
+class WeiBoProfile(BaseModel):
+    # 存放微博用户表
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE, null=True)
+    wuid = models.CharField(max_length=10, verbose_name="微博用户id", db_index=True, unique=True)
+    access_token = models.CharField(max_length=32, verbose_name="微博的授权令牌")
+
+    class Meta:
+        db_table = "user_weibo_profile"
