@@ -170,5 +170,21 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
+    },
+    # 存储短信验证码
+    "sms": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
+}
+
+# 发送短信配置
+SMS_CONFIG = {
+    "account_sid": "2c94811c870df4c801875bd0d1760c56",
+    "auth_token": "1900fe58c2354ba8b4e236ce31c748f7",
+    "app_id": "2c94811c870df4c801875bd0d26b0c5d",
+    "template_id": "1",
 }
