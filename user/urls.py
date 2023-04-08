@@ -10,4 +10,6 @@ urlpatterns = [
     path('<str:username>/address/<int:id>', views.AddressView.as_view()),
     # 设置默认地址
     path('<str:username>/address/default', views.DefaultAddressView.as_view()),
+    # 注册短信验证
+    path('sms/code', views.sms_view),
 ]

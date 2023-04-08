@@ -10,12 +10,14 @@ from .models import UserProfile, Address
 from django.core.cache import caches
 from django.core.mail import send_mail
 from django.db import transaction
-from .tasks import async_send_active_mail
+from .tasks import *
 from django.views import View
 from utils.logging_dec import logging_check
 from utils.base_view import BaseView
+from utils.sms import YunTongXunAPI
 
 CODE_CACHE = caches["default"]
+SMS_CACHE = caches["sms"]
 
 # Create your views here.
 def user(request):
@@ -28,6 +30,16 @@ def user(request):
     password = data.get("password")
     email = data.get("email")
     phone = data.get("phone")
+    # 短信验证码
+    verify = data.get("verify")
+
+    expire_key = "sms_expire_%s" % phone
+    redis_code = SMS_CACHE.get(expire_key)
+
+    if not redis_code:
+        return JsonResponse({"code": 10109, "error": {"message": "验证码过期，请重新获取验证码"}})
+    if verify != str(redis_code):
+        return JsonResponse({"code": 10110, "error": {"message": "验证码错误"}})
 
     # 数据库查询数据
     old_user = UserProfile.objects.filter(username=username)
@@ -267,6 +279,30 @@ class DefaultAddressView(BaseView):
             transaction.savepoint_commit(sid)
 
         return JsonResponse({"code": 200, "data": "设为默认地址成功！"})
+
+def sms_view(request):
+    """
+    短信验证视图逻辑
+    """
+    data = json.loads(request.body)
+    phone = data.get("phone")
+
+    code = random.randint(100000, 999999)
+
+    # 调用短信接口，判断验证码是否存在
+    key = "sms_%s" % phone
+    redis_code = SMS_CACHE.get(key)
+    if redis_code:
+        return JsonResponse({"code": 10108, "error": {"message": "三分钟内只能发送一次短信验证码"}})
+    # 使用celery异步发送短信
+    async_send_message.delay(phone, code)
+    # 控制验证码发送频率
+    SMS_CACHE.set(key, code, 180)
+    # 控制验证码有效期
+    expire_key = "sms_expire_%s" % phone
+    SMS_CACHE.set(expire_key, code, 600)
+
+    return JsonResponse({"code": 200, "data": "发送成功"})
 
 def md5_token(string):
     """
