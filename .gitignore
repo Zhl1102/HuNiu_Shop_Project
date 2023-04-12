@@ -5,3 +5,4 @@ venv
 # other
 .idea/
 __pycache__/
+migrations/
