@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'user',
     'dtoken',
+    'goods',
 ]
 
 MIDDLEWARE = [
@@ -119,7 +120,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -178,6 +179,26 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
+    },
+    # 商品首页
+    "goods_index": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/3",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # 开启缓存数据压缩
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+        }
+    },
+    # 详情页缓存
+    "goods_detail": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/4",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # 开启缓存数据压缩
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+        }
     }
 }
 
@@ -195,3 +216,9 @@ WEIBO_CONFIG = {
     "app_secret": "f0af13e26b8d2a27f91ce251a2ee1df6",
     "redirect_uri": "http://localhost:9999/huniushop/templates/callback.html",
 }
+
+# 配置静态文件
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+PIC_URL = "http://127.0.0.1:8000" + MEDIA_URL

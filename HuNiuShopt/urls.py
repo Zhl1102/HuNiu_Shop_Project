@@ -17,6 +17,8 @@ from django.contrib import admin
 from django.urls import path, include
 from user import views as user_view
 from dtoken import views as token_view
+from django.conf.urls.static import static
+from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,5 +27,10 @@ urlpatterns = [
     # 登录路由
     path('v1/tokens', token_view.tokens),
     # 激活路由
-    path('v1/users/', include("user.urls"))
+    path('v1/users/', include("user.urls")),
+    # 商品模块
+    path('v1/goods/', include('goods.urls')),
 ]
+
+# 配置静态路由
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
