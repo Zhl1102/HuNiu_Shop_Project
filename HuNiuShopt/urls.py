@@ -30,6 +30,8 @@ urlpatterns = [
     path('v1/users/', include("user.urls")),
     # 商品模块
     path('v1/goods/', include('goods.urls')),
+    # 购物车模块
+    path('v1/carts/', include('carts.urls')),
 ]
 
 # 配置静态路由
