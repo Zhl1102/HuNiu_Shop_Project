@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'user',
     'dtoken',
     'goods',
+    'carts',
 ]
 
 MIDDLEWARE = [
@@ -194,6 +195,17 @@ CACHES = {
     "goods_detail": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://127.0.0.1:6379/4",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # 开启缓存数据压缩
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+        }
+    },
+    # 购物车数据
+    "carts": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/5",
+        "TIMEOUT": None,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             # 开启缓存数据压缩
