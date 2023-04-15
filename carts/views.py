@@ -14,27 +14,7 @@ class CartsView(BaseView):
         查询购物车视图逻辑
         """
         user = request.myuser
-        carts_key = self.get_cache_key(user.id)
-        carts_data = self.get_cats_all_data(carts_key)
-        skus_query = SKU.objects.filter(id__in=carts_data.keys())
-        for s in skus_query:
-            print(s.id)
-            print(s.name)
-            print(s.price)
-        skus_list = []
-        for sku in skus_query:
-            value_query = sku.sale_attr_value.all()
-            sku_dict = {
-                "id": sku.id,
-                "name": sku.name,
-                "count": carts_data[str(sku.id)][0],
-                "selected": carts_data[str(sku.id)][1],
-                "default_image_url": str(sku.default_image_url),
-                "price": sku.price,
-                "sku_sale_attr_name": [i.spu_sale_attr.name for i in value_query],
-                "sku_sale_attr_val": [i.name for i in value_query]
-            }
-            skus_list.append(sku_dict)
+        skus_list = self.get_carts_list(user.id)
         result = {
             'code': 200,
             'data': skus_list,
@@ -117,3 +97,43 @@ class CartsView(BaseView):
             return {}
 
         return data
+
+    def get_carts_list(self, uid):
+        """
+        订单页商品列表
+        """
+        carts_key = self.get_cache_key(uid)
+        carts_data = self.get_cats_all_data(carts_key)
+        skus_query = SKU.objects.filter(id__in=carts_data.keys())
+        skus_list = []
+        for sku in skus_query:
+            value_query = sku.sale_attr_value.all()
+            sku_dict = {
+                "id": sku.id,
+                "name": sku.name,
+                "count": carts_data[str(sku.id)][0],
+                "selected": carts_data[str(sku.id)][1],
+                "default_image_url": str(sku.default_image_url),
+                "price": sku.price,
+                "sku_sale_attr_name": [i.spu_sale_attr.name for i in value_query],
+                "sku_sale_attr_val": [i.name for i in value_query]
+            }
+            skus_list.append(sku_dict)
+        return skus_list
+
+    def get_carts_dict(self, id):
+        # 功能函数：筛选购物车中选中的商品
+        carts_key = self.get_cache_key(id)
+        carts_data = self.get_cats_all_data(carts_key)
+        return {k:v for k,v in carts_data.items() if v[1] == 1}
+
+    def del_carts_dict(self, id):
+        # 清除购物车数据
+        carts_key = self.get_cache_key(id)
+        carts_data = self.get_cats_all_data(carts_key)
+        for k,v in list(carts_data.items()):
+            if v[1] == 1:
+                del carts_data[k]
+        # 将结果更新到redis
+        CARTS_CACHE.set(carts_key, carts_data)
+        return len(carts_data)

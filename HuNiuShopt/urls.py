@@ -19,6 +19,7 @@ from user import views as user_view
 from dtoken import views as token_view
 from django.conf.urls.static import static
 from django.conf import settings
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -32,6 +33,10 @@ urlpatterns = [
     path('v1/goods/', include('goods.urls')),
     # 购物车模块
     path('v1/carts/', include('carts.urls')),
+    # 订单模块
+    path('v1/orders/', include('orders.urls')),
+    # 测试redis分布式锁
+    path("v1/stock", views.stock_view),
 ]
 
 # 配置静态路由
