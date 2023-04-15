@@ -32,15 +32,15 @@ def user(request):
     email = data.get("email")
     phone = data.get("phone")
     # 短信验证码
-    verify = data.get("verify")
-
-    expire_key = "sms_expire_%s" % phone
-    redis_code = SMS_CACHE.get(expire_key)
-
-    if not redis_code:
-        return JsonResponse({"code": 10109, "error": {"message": "验证码过期，请重新获取验证码"}})
-    if verify != str(redis_code):
-        return JsonResponse({"code": 10110, "error": {"message": "验证码错误"}})
+    # verify = data.get("verify")
+    #
+    # expire_key = "sms_expire_%s" % phone
+    # redis_code = SMS_CACHE.get(expire_key)
+    #
+    # if not redis_code:
+    #     return JsonResponse({"code": 10109, "error": {"message": "验证码过期，请重新获取验证码"}})
+    # if verify != str(redis_code):
+    #     return JsonResponse({"code": 10110, "error": {"message": "验证码错误"}})
 
     # 数据库查询数据
     old_user = UserProfile.objects.filter(username=username)
