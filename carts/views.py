@@ -79,6 +79,30 @@ class CartsView(BaseView):
 
         return JsonResponse(result)
 
+    def delete(self, request, username):
+        """删除购物车视图逻辑"""
+        # 获取请求体数据
+        data = request.data
+        sku_id = str(data.get("sku_id"))
+        # 获取redis中购物数据
+        user = request.myuser
+        cache_key = self.get_cache_key(user.id)
+        carts_data = self.get_cats_all_data(cache_key)
+        # 删除数据
+        if sku_id in carts_data:
+            carts_conut = self.del_carts_dict_one(cache_key, carts_data, sku_id)
+        else:
+            return JsonResponse({"code": 10402, "error": "删除失败"})
+        result = {
+            'code': 200,
+            'data':
+            {
+                'carts_count': carts_conut
+            },
+            'base_url': settings.PIC_URL
+        }
+        return JsonResponse(result)
+
     def get_cache_key(self, user_id):
         """
         功能函数：生成key
@@ -128,11 +152,20 @@ class CartsView(BaseView):
         return {k:v for k,v in carts_data.items() if v[1] == 1}
 
     def del_carts_dict(self, id):
-        # 清除购物车数据
+        # 点击确认购买或去结算，清除购物车中的数据
         carts_key = self.get_cache_key(id)
         carts_data = self.get_cats_all_data(carts_key)
         for k,v in list(carts_data.items()):
             if v[1] == 1:
+                del carts_data[k]
+        # 将结果更新到redis
+        CARTS_CACHE.set(carts_key, carts_data)
+        return len(carts_data)
+
+    def del_carts_dict_one(self,carts_key, carts_data, sku_id):
+        # 点击删除按钮，删除购物车中的数据
+        for k,v in list(carts_data.items()):
+            if sku_id == k:
                 del carts_data[k]
         # 将结果更新到redis
         CARTS_CACHE.set(carts_key, carts_data)
