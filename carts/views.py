@@ -103,6 +103,33 @@ class CartsView(BaseView):
         }
         return JsonResponse(result)
 
+    def put(self, request, username):
+        """增加购物车单个商品数量"""
+        # 获取请求体数据
+        data = request.data
+        sku_id = data.get("sku_id")
+        state = data.get("state")
+        # 获取redis中购物车数据
+        user = request.myuser
+        cache_key = self.get_cache_key(user.id)
+        carts_data = self.get_cats_all_data(cache_key)
+        if not carts_data.get(sku_id):
+            return JsonResponse({"code": 10403, "error": "商品不存在"})
+        if state == 'add':
+            carts_data[sku_id][0] += 1
+        elif state == 'del':
+            carts_data[sku_id][0] -= 1
+        # 存入redis数据库
+        CARTS_CACHE.set(cache_key, carts_data)
+
+        skus_list = self.get_carts_list(user.id)
+        result = {
+            'code': 200,
+            'data': skus_list,
+            'base_url': settings.PIC_URL
+        }
+        return JsonResponse(result)
+
     def get_cache_key(self, user_id):
         """
         功能函数：生成key
